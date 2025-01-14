@@ -5,52 +5,50 @@ on:
     types:
       - labeled
       - synchronize
+    branches:
+      - '*'
+    branches-ignore:
+      - main
+
+  push:
+    branches:
+      - '*'
+    paths:
+      - 'apps/api/**'
     branches-ignore:
       - main
 
 jobs:
-  check-label-and-path:
+  validate-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Check if label "deploy-dev" exists
-        id: label_check
+        id: check_label
         run: |
-          echo "Checking for label 'deploy-dev'..."
-          labels=$(jq -r '.pull_request.labels[].name' <<<"${{ toJSON(github.event) }}")
-          echo "Labels on PR: $labels"
-          if [[ ! "$labels" =~ "deploy-dev" ]]; then
-            echo "The label 'deploy-dev' is missing. Exiting..."
-            exit 1
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Checking for label 'deploy-dev'..."
+            labels=$(jq -r '.pull_request.labels[].name' <<<"${{ toJSON(github.event) }}")
+            if [[ ! "$labels" =~ "deploy-dev" ]]; then
+              echo "Label 'deploy-dev' is missing. Skipping deployment."
+              exit 1
+            fi
+            echo "Label 'deploy-dev' is present."
           fi
-          echo "Label 'deploy-dev' is present."
 
-      - name: Check if relevant files changed
-        id: path_check
+      - name: Check for changes in 'apps/api/**'
+        id: check_paths
         run: |
-          echo "Checking for changes in 'apps/api/**'..."
-          git fetch --depth=2
-          changes=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
-          echo "Changed files: $changes"
-          if ! echo "$changes" | grep -q '^apps/api/'; then
-            echo "No changes in 'apps/api/**'. Exiting..."
-            exit 1
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "Checking for changes in 'apps/api/**'..."
+            git fetch --depth=2
+            changes=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+            if ! echo "$changes" | grep -q '^apps/api/'; then
+              echo "No changes detected in 'apps/api/**'. Skipping deployment."
+              exit 1
+            fi
+            echo "Relevant changes detected in 'apps/api/**'."
           fi
-          echo "Relevant changes detected in 'apps/api/**'."
 
-  build:
-    if: ${{ success() }}
-    needs: check-label-and-path
-    uses: ./.github/workflows/build.yml
-    with:
-      branch: ${{ github.ref_name }}
-    permissions:
-      contents: read
-      packages: write
-
-  deploy:
-    if: ${{ success() }}
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Deploy to Staging
-        run: echo "Deploying image tagged as 'dev' to staging environment."
+        if: ${{ success() }}
+        run: echo "Deploying changes in 'apps/api/**' with label 'deploy-dev' to staging."
