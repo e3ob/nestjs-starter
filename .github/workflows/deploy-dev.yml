@@ -1,18 +1,25 @@
 name: Deploy to Staging
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to deploy'
-        required: false
-        default: 'dev'
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'apps/api/**'
+  pull_request:
+    types:
+      - labeled
+    branches-ignore:
+      - main
 
 jobs:
   build:
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
     uses: ./.github/workflows/build.yml
     with:
-      branch: ${{ github.event.inputs.branch }}
+      branch: ${{ github.ref_name }}
     permissions:
       contents: read
       packages: write

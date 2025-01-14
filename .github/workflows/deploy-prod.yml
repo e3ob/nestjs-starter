@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/api/**'
 
 jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      branch: prod
+      branch: main
     permissions:
       contents: read
       packages: write
