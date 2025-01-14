@@ -1,22 +1,45 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches-ignore:
-      - main
-    paths:
-      - 'apps/api/**'
   pull_request:
     types:
       - labeled
+      - synchronize
     branches-ignore:
       - main
 
 jobs:
+  check-label-and-path:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if label "deploy-dev" exists
+        id: label_check
+        run: |
+          echo "Checking for label 'deploy-dev'..."
+          labels=$(jq -r '.pull_request.labels[].name' <<<"${{ toJSON(github.event) }}")
+          echo "Labels on PR: $labels"
+          if [[ ! "$labels" =~ "deploy-dev" ]]; then
+            echo "The label 'deploy-dev' is missing. Exiting..."
+            exit 1
+          fi
+          echo "Label 'deploy-dev' is present."
+
+      - name: Check if relevant files changed
+        id: path_check
+        run: |
+          echo "Checking for changes in 'apps/api/**'..."
+          git fetch --depth=2
+          changes=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          echo "Changed files: $changes"
+          if ! echo "$changes" | grep -q '^apps/api/'; then
+            echo "No changes in 'apps/api/**'. Exiting..."
+            exit 1
+          fi
+          echo "Relevant changes detected in 'apps/api/**'."
+
   build:
-    if: |
-      github.event_name == 'push' || 
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
+    if: ${{ success() }}
+    needs: check-label-and-path
     uses: ./.github/workflows/build.yml
     with:
       branch: ${{ github.ref_name }}
@@ -25,6 +48,7 @@ jobs:
       packages: write
 
   deploy:
+    if: ${{ success() }}
     needs: build
     runs-on: ubuntu-latest
     steps:
