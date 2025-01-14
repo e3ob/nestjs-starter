@@ -7,9 +7,6 @@ on:
         description: 'Branch to deploy'
         required: false
         default: 'dev'
-  push:
-    branches:
-      - dev
 
 jobs:
   build:
@@ -19,3 +16,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Staging
+        run: echo "Deploying image tagged as 'dev' to staging environment."

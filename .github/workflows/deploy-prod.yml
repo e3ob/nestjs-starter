@@ -17,3 +17,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Production
+        run: echo "Deploying image tagged as 'latest' to production environment."
