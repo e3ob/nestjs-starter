@@ -1,0 +1,19 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      branch: prod
+    permissions:
+      contents: read
+      packages: write
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
