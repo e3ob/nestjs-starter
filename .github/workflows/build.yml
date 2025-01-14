@@ -41,8 +41,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            ${{ inputs.branch == 'prod' ? 'type=raw,value=latest' : 'type=raw,value=dev' }}
-            type=sha,prefix=${{ inputs.branch }}-
+          ${{ inputs.branch == 'prod' ? 'type=raw,value=latest' : 'type=raw,value=dev' }}
+          type=sha,prefix=${{ inputs.branch }}-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
