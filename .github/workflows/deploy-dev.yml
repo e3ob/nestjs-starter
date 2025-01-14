@@ -9,8 +9,6 @@ on:
       - main
 
   push:
-    branches:
-      - '*'
     paths:
       - 'apps/api/**'
     branches-ignore:
