@@ -11,7 +11,7 @@ on:
     paths:
       - 'apps/api/**'
     branches-ignore:
-      - main
+      - 'main'
 
 jobs:
   validate-and-deploy:
