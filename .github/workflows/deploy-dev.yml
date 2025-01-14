@@ -4,8 +4,6 @@ on:
   pull_request:
     types:
       - labeled
-    branches-ignore:
-      - main
     paths:
       - 'apps/api/**'
 
