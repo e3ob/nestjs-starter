@@ -22,11 +22,11 @@ jobs:
         with:
           filters: |
             api:
-              - 'apps/api/**'
+            - 'apps/api/**'
 
   build:
     needs: check-changes
-    if: needs.check-changes.outputs.changed == 'true
+    if: needs.check-changes.outputs.changed == 'true'
     uses: ./.github/workflows/build.yml
     with:
       branch: main
