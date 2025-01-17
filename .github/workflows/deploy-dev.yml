@@ -14,17 +14,16 @@ on:
 jobs:
   check-changes:
     runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
     outputs:
       deploy: ${{ steps.check-label.outputs.has_label }}
     steps:
       - name: Check Associated PR Label
-        if: >
-          github.event_name == 'push' ||
-          (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
-
         id: check-label
         run: |
-          if [ github.event_name == 'pull_request' ]; then
+          if [ ${{ github.event_name }} == 'pull_request' ]; then
             HAS_LABEL="true"
           else
             PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -32,6 +31,11 @@ jobs:
             HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
           fi
           echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
+          if [ "$HAS_LABEL" == "true" ]; then
+            echo "building image with tag 'dev' and deploying to staging."
+          else
+            echo "No changes to build and deploy."
+          fi
 
   build:
     needs: check-changes
