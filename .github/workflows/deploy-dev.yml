@@ -29,13 +29,18 @@ jobs:
               "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${{ github.ref_name }}&state=open")
             HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
           fi
+          if [ "$HAS_LABEL" == "true" ]; then
+            printf "This PR has 'deploy-dev' label.\n\nPushing to staging."
+          else
+            echo "This PR does not have the 'deploy-dev' label.\n\nSkipping deployment."
+          fi
           echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
 
   deploy:
     needs: check-pr
     if: needs.check-pr.outputs.has-label == 'true'
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Deploy to Staging
         run: echo "Deploying changes in 'apps/api/**' to staging."
