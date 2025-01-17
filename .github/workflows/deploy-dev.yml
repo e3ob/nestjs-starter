@@ -7,8 +7,26 @@ on:
       - 'apps/api/**'
 
 jobs:
-  build:
+  check-changes:
     if: contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+          api:
+            'apps/api/**'
+
+  build:
+    needs: check-changes
+    if : needs.check-changes.outputs.changed == "true"
     uses: ./.github/workflows/build.yml
     with:
       branch: main
