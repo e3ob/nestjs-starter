@@ -13,9 +13,7 @@ on:
 
 jobs:
   check-changes:
-    if: >
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       deploy: ${{ steps.check-label.outputs.has_label }}
