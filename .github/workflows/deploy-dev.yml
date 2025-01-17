@@ -2,11 +2,9 @@ name: Deploy to Staging
 
 on:
   pull_request:
-    types:
-      - labeled
+    types: [opened, synchronize, labeled]
     paths:
       - 'apps/api/**'
-
   push:
     paths:
       - 'apps/api/**'
@@ -14,36 +12,30 @@ on:
       - 'main'
 
 jobs:
-  validate-and-deploy:
+  check-pr:
     runs-on: ubuntu-latest
+    outputs:
+      has-label: ${{ steps.check-label.outputs.has_label }}
     steps:
-      - name: Check if label "deploy-dev" exists
-        id: check_label
+      - name: Check Associated PR Label
+        id: check-label
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Checking for label 'deploy-dev'..."
-            labels=$(jq -r '.pull_request.labels[].name' <<<"${{ toJSON(github.event) }}")
-            if [[ ! "$labels" =~ "deploy-dev" ]]; then
-              echo "Label 'deploy-dev' is missing. Skipping deployment."
-              exit 1
-            fi
-            echo "Label 'deploy-dev' is present."
+            # For PR events, check the current PR
+            HAS_LABEL=$(jq 'any(.labels[]; .name == "deploy-dev")' <<< '${{ toJSON(github.event.pull_request) }}')
+          else
+            # For push events, find associated PR and check its labels
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${{ github.ref_name }}&state=open")
+            HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
           fi
+          echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
 
-      - name: Check for changes in 'apps/api/**'
-        id: check_paths
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "Checking for changes in 'apps/api/**'..."
-            git fetch --depth=2
-            changes=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
-            if ! echo "$changes" | grep -q '^apps/api/'; then
-              echo "No changes detected in 'apps/api/**'. Skipping deployment."
-              exit 1
-            fi
-            echo "Relevant changes detected in 'apps/api/**'."
-          fi
-
+  deploy:
+    needs: check-pr
+    if: needs.check-pr.outputs.has-label == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
       - name: Deploy to Staging
-        if: ${{ success() }}
-        run: echo "Deploying changes in 'apps/api/**' with label 'deploy-dev' to staging."
+        run: echo "Deploying changes in 'apps/api/**' to staging."
