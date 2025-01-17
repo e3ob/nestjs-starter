@@ -13,26 +13,29 @@ on:
 
 jobs:
   check-changes:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       deploy: ${{ steps.check-label.outputs.has_label }}
     steps:
       - name: Check Associated PR Label
+        if: >
+          github.event_name == 'push' ||
+          (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
+
         id: check-label
         run: |
-          # For push events, find associated PR and check its labels
-          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          if [ github.event_name == 'pull_request' ]; then
+            HAS_LABEL="true"
+          else
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${{ github.ref_name }}&state=open")
-          HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
+            HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
+          fi
           echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
 
   build:
     needs: [check-changes]
-    if: >
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev')) ||
-      needs.check-changes.outputs.deploy == 'true' 
-      
+    if: needs.check-changes.outputs.deploy == 'true'
     uses: ./.github/workflows/build.yml
     with:
       branch: main
