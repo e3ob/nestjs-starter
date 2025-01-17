@@ -11,7 +11,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'deploy-dev')
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.filter.outputs.changed }}
+      changed: ${{ steps.filter.outputs.api }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,12 +21,12 @@ jobs:
         id: filter
         with:
           filters: |
-          api:
-            'apps/api/**'
+          api: 
+          -'apps/api/**'
 
   build:
     needs: check-changes
-    if : needs.check-changes.outputs.changed == 'true
+    if: needs.check-changes.outputs.changed == 'true
     uses: ./.github/workflows/build.yml
     with:
       branch: main
