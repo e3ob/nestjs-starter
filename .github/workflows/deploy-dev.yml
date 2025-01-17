@@ -21,8 +21,8 @@ jobs:
         id: filter
         with:
           filters: |
-          api: 
-          -'apps/api/**'
+          api:
+            - 'apps/api/**'
 
   build:
     needs: check-changes
