@@ -30,17 +30,25 @@ jobs:
             HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
           fi
           if [ "$HAS_LABEL" == "true" ]; then
-            printf "This PR has 'deploy-dev' label.\n\nPushing to staging."
+            printf "This PR has 'deploy-dev' label.\n\nPushing to staging..."
           else
-            echo "This PR does not have the 'deploy-dev' label.\n\nSkipping deployment."
+            printf "This PR does not have the 'deploy-dev' label.\n\nSkipping deployment..."
           fi
           echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
 
-  deploy:
+  build:
     needs: check-pr
     if: needs.check-pr.outputs.has-label == 'true'
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/build.yml
+    with:
+      branch: main
+    permissions:
+      contents: read
+      packages: write
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
     steps:
       - name: Deploy to Staging
-        run: echo "Deploying changes in 'apps/api/**' to staging."
+        run: echo "Deploying image tagged as 'dev' to staging environment."
