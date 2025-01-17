@@ -6,7 +6,7 @@ on:
     paths:
       - 'apps/api/**'
   push:
-    ignore-branches:
+    branches-ignore:
       - main
     paths:
       - 'apps/api/**'
