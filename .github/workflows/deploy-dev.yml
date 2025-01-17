@@ -34,11 +34,11 @@ jobs:
           echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
 
   build:
-    needs: [check-changes]
+    needs: check-changes
     if: needs.check-changes.outputs.deploy == 'true'
     uses: ./.github/workflows/build.yml
     with:
-      branch: main
+      branch: ${github.ref_name}
     permissions:
       contents: read
       packages: write
