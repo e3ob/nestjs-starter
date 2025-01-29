@@ -1,0 +1,27 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/api/**'
+
+jobs:
+  build:
+    uses: ./.github/workflows/api-build.yml
+    with:
+      branch: main
+    permissions:
+      contents: read
+      packages: write
+
+  Deploy_To_Prod:
+    name: Deploy Image to Production
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Application Image
+        run: |
+          echo "Deploying" 
+          echo "Deployed image: ${{ jobs.build.outputs.image_sha }}"

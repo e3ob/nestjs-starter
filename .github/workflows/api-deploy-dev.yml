@@ -1,0 +1,58 @@
+name: Deploy to Staging
+
+on:
+  pull_request:
+    types: [opened, labeled]
+    paths:
+      - 'apps/api/**'
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'apps/api/**'
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy-dev'))
+    outputs:
+      deploy: ${{ steps.check-label.outputs.has_label }}
+    steps:
+      - name: Check Associated PR Label
+        id: check-label
+        run: |
+          if [ ${{ github.event_name }} == 'pull_request' ]; then
+            HAS_LABEL="true"
+          else
+            PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${{ github.ref_name }}&state=open")
+            HAS_LABEL=$(echo "$PR_DATA" | jq 'any(.[].labels[]; .name == "deploy-dev")')
+          fi
+          echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
+          if [ "$HAS_LABEL" == "true" ]; then
+            echo "building image with tag 'dev' and deploying to staging."
+          else
+            echo "No changes to build and deploy."
+          fi
+
+  build:
+    needs: check-changes
+    if: needs.check-changes.outputs.deploy == 'true'
+    uses: ./.github/workflows/api-build.yml
+    with:
+      branch: ${github.ref_name}
+    permissions:
+      contents: read
+      packages: write
+
+  Deploy_To_Staging:
+    name: Deploy Image to Production
+    needs: build
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Update Application Image
+        run: |
+          echo "Deploying"
+          echo "Deployed image: ${{ jobs.build.outputs.image_sha }}"
